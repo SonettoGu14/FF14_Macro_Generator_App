@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FF14 Macro Generator</title>
+    <script>
+      (function() {
+        var theme = localStorage.getItem('theme');
+        if (theme === 'light') {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.classList.add('light');
+        }
+      })();
+    </script>
+    <script>
+      window.onerror = function(msg, url, line, col, error) {
+        var el = document.createElement('div');
+        el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1f2937;color:#f87171;padding:1rem;font-family:monospace;font-size:14px;white-space:pre-wrap;max-height:50vh;overflow:auto;border-bottom:2px solid #f87171';
+        el.textContent = 'ERROR: ' + msg + '\nat ' + url + ':' + line + ':' + col + (error ? '\n' + error.stack : '');
+        document.body.prepend(el);
+      };
+      window.addEventListener('unhandledrejection', function(e) {
+        var el = document.createElement('div');
+        el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1f2937;color:#f87171;padding:1rem;font-family:monospace;font-size:14px;white-space:pre-wrap;max-height:50vh;overflow:auto;border-bottom:2px solid #f87171';
+        el.textContent = 'PROMISE REJECTION: ' + e.reason;
+        document.body.prepend(el);
+      });
+    </script>
+  </head>
+  <body style="margin:0">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
