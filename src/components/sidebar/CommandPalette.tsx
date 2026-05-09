@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { COMMANDS, CATEGORIES, MacroCommand, CommandCategory } from '../../data/commands';
 import { TEMPLATES, MacroTemplate } from '../../data/templates';
+import { JOBS, JOB_ROLES, JobSkill } from '../../data/jobs';
 import { useMacroStore } from '../../hooks/useMacroStore';
 import { useI18n } from '../../i18n';
-import { Search, Plus, Zap, MessageSquare, Clock, Crosshair, Layout, Wrench, Users, Terminal, Menu, Settings, FileText, Layers } from 'lucide-react';
+import { Search, Plus, Zap, MessageSquare, Clock, Crosshair, Layout, Wrench, Users, Terminal, Menu, Settings, FileText, Layers, Briefcase, Shield, Heart, Swords, Sparkles } from 'lucide-react';
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   [CommandCategory.ACTION]: <Zap className="w-4 h-4" />,
@@ -19,10 +20,20 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   [CommandCategory.CONDITIONAL]: <Zap className="w-4 h-4" />,
 };
 
+const ROLE_ICONS: Record<string, React.ReactNode> = {
+  tank: <Shield className="w-4 h-4" />,
+  healer: <Heart className="w-4 h-4" />,
+  melee: <Swords className="w-4 h-4" />,
+  ranged: <Crosshair className="w-4 h-4" />,
+  caster: <Sparkles className="w-4 h-4" />,
+};
+
 export function CommandPalette() {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedCategory, setExpandedCategory] = useState<CommandCategory | null>(CommandCategory.ACTION);
-  const [activeTab, setActiveTab] = useState<'commands' | 'templates'>('commands');
+  const [activeTab, setActiveTab] = useState<'commands' | 'templates' | 'jobs'>('commands');
+  const [expandedRole, setExpandedRole] = useState<string | null>('tank');
+  const [expandedJob, setExpandedJob] = useState<string | null>(null);
   const addCommandNode = useMacroStore((state) => state.addCommandNode);
   const importMacro = useMacroStore((state) => state.importMacro);
   const { language, t } = useI18n();
@@ -40,6 +51,15 @@ export function CommandPalette() {
     const term = searchTerm.toLowerCase();
     return name.toLowerCase().includes(term) || desc.toLowerCase().includes(term);
   });
+
+  const filteredJobSkills = JOBS.map((job) => ({
+    ...job,
+    skills: job.skills.filter((s) => {
+      if (!searchTerm) return true;
+      const name = s.nameLabel?.[language] || s.name;
+      return name.toLowerCase().includes(searchTerm.toLowerCase());
+    }),
+  }));
 
   const commandsByCategory = filteredCommands.reduce((acc, cmd) => {
     if (!acc[cmd.category]) {
@@ -78,6 +98,24 @@ export function CommandPalette() {
     importMacro({ nodes, edges: [] });
   };
 
+  const handleJobSkillDrag = (e: React.DragEvent, skill: JobSkill) => {
+    const skillName = skill.nameLabel?.[language] || skill.name;
+    e.dataTransfer.setData('application/json', JSON.stringify({
+      _type: 'jobSkill',
+      commandId: 'action',
+      prefilledParams: { skill: skillName, target: '<t>' },
+    }));
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleJobSkillClick = (skill: JobSkill) => {
+    const actionCommand = COMMANDS.find((c) => c.id === 'action')!;
+    const skillName = skill.nameLabel?.[language] || skill.name;
+    const randomX = Math.random() * 400 + 100;
+    const randomY = Math.random() * 300 + 100;
+    addCommandNode(actionCommand, { x: randomX, y: randomY }, { skill: skillName, target: '<t>' });
+  };
+
   return (
     <div className="h-full flex flex-col bg-white/95 dark:bg-gray-900/95 border-r border-gray-200 dark:border-gray-700">
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -105,12 +143,23 @@ export function CommandPalette() {
             <FileText className="w-4 h-4" />
             {t('commandLibrary.templates')}
           </button>
+          <button
+            onClick={() => setActiveTab('jobs')}
+            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === 'jobs'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            <Briefcase className="w-4 h-4" />
+            {t('commandLibrary.jobs')}
+          </button>
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder={activeTab === 'commands' ? t('commandLibrary.searchPlaceholder') : t('commandLibrary.searchTemplates')}
+            placeholder={activeTab === 'commands' ? t('commandLibrary.searchPlaceholder') : activeTab === 'templates' ? t('commandLibrary.searchTemplates') : t('commandLibrary.searchJobs')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
@@ -183,7 +232,7 @@ export function CommandPalette() {
               );
             })}
           </>
-        ) : (
+        ) : activeTab === 'templates' ? (
           <>
             {filteredTemplates.map((template) => (
               <div
@@ -216,6 +265,107 @@ export function CommandPalette() {
                 <p>{t('commandLibrary.noTemplates')}</p>
               </div>
             )}
+          </>
+        ) : (
+          <>
+            {JOB_ROLES.map((role) => {
+              const roleJobs = filteredJobSkills.filter((j) => j.role === role.id);
+              if (roleJobs.length === 0) return null;
+              const isRoleExpanded = expandedRole === role.id || !!searchTerm;
+
+              return (
+                <div key={role.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setExpandedRole(isRoleExpanded ? null : role.id)}
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 flex items-center justify-between transition-colors"
+                  >
+                    <div className="flex items-center gap-2 text-gray-900 dark:text-white font-medium">
+                      {ROLE_ICONS[role.id]}
+                      <span>{role.nameLabel[language]}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                        {roleJobs.length}
+                      </span>
+                    </div>
+                    <div className={`transform transition-transform ${isRoleExpanded ? 'rotate-180' : ''}`}>
+                      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </button>
+
+                  {isRoleExpanded && (
+                    <div className="p-2 space-y-2">
+                      {roleJobs.map((job) => {
+                        const isJobExpanded = expandedJob === job.id || !!searchTerm;
+                        const hasSkills = job.skills.length > 0;
+
+                        return (
+                          <div key={job.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                            <button
+                              onClick={() => hasSkills && setExpandedJob(isJobExpanded ? null : job.id)}
+                              className={`w-full px-3 py-2 flex items-center justify-between transition-colors ${
+                                hasSkills
+                                  ? 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-750'
+                                  : 'bg-gray-100 dark:bg-gray-800 opacity-50 cursor-default'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 text-gray-900 dark:text-white font-medium text-sm">
+                                <span>{job.nameLabel[language]}</span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                                  {job.skills.length}
+                                </span>
+                              </div>
+                              {hasSkills && (
+                                <div className={`transform transition-transform ${isJobExpanded ? 'rotate-180' : ''}`}>
+                                  <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </div>
+                              )}
+                            </button>
+
+                            {isJobExpanded && hasSkills && (
+                              <div className="p-2 space-y-1">
+                                {job.skills.map((skill) => (
+                                  <div
+                                    key={skill.id}
+                                    draggable
+                                    onDragStart={(e) => handleJobSkillDrag(e, skill)}
+                                    className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg cursor-grab active:cursor-grabbing transition-colors group"
+                                  >
+                                    <div className="flex-1 min-w-0 flex items-center gap-2">
+                                      <span className="font-medium text-gray-900 dark:text-white text-sm">
+                                        {skill.nameLabel?.[language] || skill.name}
+                                      </span>
+                                      <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
+                                        {t('commandLibrary.level')}{skill.level}
+                                      </span>
+                                    </div>
+                                    <button
+                                      onClick={() => handleJobSkillClick(skill)}
+                                      className="ml-2 p-1.5 bg-purple-600 hover:bg-purple-500 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-all"
+                                      title={t('commandLibrary.addToCanvas')}
+                                    >
+                                      <Plus className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {isJobExpanded && !hasSkills && (
+                              <div className="p-3 text-center text-xs text-gray-400 dark:text-gray-500">
+                                {t('commandLibrary.noJobSkills')}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </>
         )}
       </div>

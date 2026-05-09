@@ -69,4 +69,10 @@ export const translations: Record<string, TranslationValue> = {
   'macroTabs.rename': { zh: '重命名', en: 'Rename' },
   'macroTabs.duplicate': { zh: '复制', en: 'Duplicate' },
   'macroTabs.delete': { zh: '删除', en: 'Delete' },
+
+  // Job Skills Tab
+  'commandLibrary.jobs': { zh: '职业技能', en: 'Job Skills' },
+  'commandLibrary.searchJobs': { zh: '搜索技能...', en: 'Search skills...' },
+  'commandLibrary.noJobSkills': { zh: '暂无技能数据', en: 'No skill data yet' },
+  'commandLibrary.level': { zh: 'Lv.', en: 'Lv.' },
 };

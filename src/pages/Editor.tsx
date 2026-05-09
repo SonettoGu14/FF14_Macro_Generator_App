@@ -16,7 +16,7 @@ import { MacroOutput } from '../components/sidebar/MacroOutput';
 import { useMacroStore } from '../hooks/useMacroStore';
 import { useTheme } from '../hooks/useTheme';
 import { useI18n } from '../i18n';
-import { MacroCommand } from '../data/commands';
+import { MacroCommand, COMMANDS } from '../data/commands';
 import { Sun, Moon, Languages } from 'lucide-react';
 
 const nodeTypes: NodeTypes = {
@@ -74,14 +74,20 @@ function EditorContent() {
       const commandData = event.dataTransfer.getData('application/json');
       if (!commandData) return;
 
-      const command: MacroCommand = JSON.parse(commandData);
-
       const position = {
         x: event.clientX - reactFlowBounds.left - 100,
         y: event.clientY - reactFlowBounds.top - 30,
       };
 
-      addCommandNode(command, position);
+      const data = JSON.parse(commandData);
+      if (data._type === 'jobSkill') {
+        const command = COMMANDS.find((c) => c.id === data.commandId);
+        if (command) {
+          addCommandNode(command, position, data.prefilledParams);
+        }
+      } else {
+        addCommandNode(data as MacroCommand, position);
+      }
     },
     [addCommandNode]
   );

@@ -30,7 +30,7 @@ interface MacroStore {
   onConnect: (connection: Connection) => void;
   selectNode: (node: Node | null) => void;
   updateNodeParams: (nodeId: string, params: Record<string, string>) => void;
-  addCommandNode: (command: MacroCommand, position: { x: number; y: number }) => void;
+  addCommandNode: (command: MacroCommand, position: { x: number; y: number }, prefilledParams?: Record<string, string>) => void;
   removeNode: (nodeId: string) => void;
   clearCanvas: () => void;
   getGeneratedMacro: () => string;
@@ -145,7 +145,7 @@ export const useMacroStore = create<MacroStore>()(
             });
           },
 
-          addCommandNode: (command, position) => {
+          addCommandNode: (command, position, prefilledParams) => {
             const newNode: Node = {
               id: `node-${Date.now()}`,
               type: 'custom',
@@ -153,7 +153,7 @@ export const useMacroStore = create<MacroStore>()(
               data: {
                 command,
                 params: Object.fromEntries(
-                  command.parameters.map((p) => [p.name, p.defaultValue || ''])
+                  command.parameters.map((p) => [p.name, prefilledParams?.[p.name] ?? p.defaultValue ?? ''])
                 ),
               },
             };
